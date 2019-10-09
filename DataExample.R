@@ -1,8 +1,9 @@
-#######################################################
-#########Code for evaluating the data example##########
-#########method implemented can also be used for #####
-##########reproducing the simulation results##########
-#######################################################
+######################################################################
+#########Code for evaluating the data example from the paper##########
+######"Equivalence tests for binary efficacy-toxicity responses"######
+#############method implemented can also be used for #################
+##########reproducing the simulation results##########################
+####################Author: Kathrin Möllenhoff########################
 
 library(MultiOrd) #package for generation of binary data
 library(alabama) #package for constrained optimization
