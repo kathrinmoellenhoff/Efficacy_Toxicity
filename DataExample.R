@@ -117,12 +117,32 @@ hin <- function(x) {
   h
 } 
 
+#function for constrained optimization producing models with the same beta parameters (placebos)
+shared_placebos <- function(v){
+  beta1=v[1]
+  gamma1=v[2]
+  beta2=v[3]
+  gamma2=v[4]
+  nu=v[5]
+  beta1b=v[6]
+  gamma1b=v[7]
+  beta2b=v[8]
+  gamma2b=v[9]
+  nub=v[10]
+  h <- rep(NA, 1)
+  h[1]=beta1-beta1b
+  h[2]=beta2-beta2b
+  h
+}
 
 #load datasets from the Data Example
 dataset <- readRDS("CaseStudyData.rds")
 data1 <- dataset$d1
 data2 <- dataset$d2
 
+######################################################
+######################################################
+#Option 1: two seperate models
 #fit a Gumbel model to each treatment group
 
 #group 1
@@ -164,7 +184,6 @@ d_e_hat <- max(abs(marg_prob(par_gumbel1[1],par_gumbel1[2])(y)-marg_prob(par_gum
 d_t_hat <- max(abs(marg_prob(par_gumbel1[3],par_gumbel1[4])(y)-marg_prob(par_gumbel2[3],par_gumbel2[4])(y))) #max. abs distance toxicity
 t.stat <- d_e_hat
 t.stat2 <- d_t_hat
-
 ######################################################
 #bootstrap test for three different equivalence margins
 ######################################################
@@ -360,4 +379,234 @@ pval2 <- ecdf(boot2)(t.stat2)
 
 critval <- c(critval,crit_val,crit_val2)
 pval <- c(pval,pval1,pval2)
+}
+
+######################################################
+######################################################
+########### Option 2 (shared placebos) ###############
+######################################################
+#bootstrap test for three different equivalence margins
+######################################################
+######################################################
+
+sum <- 0
+joint_likelihood=function(v){
+  beta1=v[1]
+  gamma1=v[2]
+  beta2=v[3]
+  gamma2=v[4]
+  nu=v[5]
+  beta1b=v[6]
+  gamma1b=v[7]
+  beta2b=v[8]
+  gamma2b=v[9]
+  nub=v[10]
+  for(i in 1:5){
+    d <- c(doses,doses2)[i]
+    d2 <- c(doses,doses2)[5+i]
+    sum <- sum +
+      log(p11(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==1)*p01(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==1)*p10(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==0)*p00(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==0))+
+      log(p11(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==1)*p01(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==1)*p10(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==0)*p00(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==0))
+  }
+  return(-sum)
+}
+
+par_gumbel <- auglag(par=c(0,1,0,1,0.5,0,1,0,1,0.5),joint_likelihood,heq=shared_placebos,hin=hin,control.outer=list(method="nlminb",trace=FALSE))$par
+par_gumbel1 <- par_gumbel[1:5]
+par_gumbel2 <- par_gumbel[6:10]
+
+######################################################
+######################################################
+
+#calculate test statistics 
+d_e_hat <- max(abs(marg_prob(par_gumbel1[1],par_gumbel1[2])(y)-marg_prob(par_gumbel2[1],par_gumbel2[2])(y))) #max.abs.distance efficacy
+d_t_hat <- max(abs(marg_prob(par_gumbel1[3],par_gumbel1[4])(y)-marg_prob(par_gumbel2[3],par_gumbel2[4])(y))) #max. abs distance toxicity
+t.stat <- d_e_hat
+t.stat2 <- d_t_hat
+
+for(epsilon in c(0.1,0.15,0.2)){
+  #constrained optimization for the efficacy curves
+  if (t.stat>=epsilon){minimum <- c(par_gumbel1,par_gumbel2)} else {
+    sum <- 0
+    joint_likelihood=function(v){
+      beta1=v[1]
+      gamma1=v[2]
+      beta2=v[3]
+      gamma2=v[4]
+      nu=v[5]
+      beta1b=v[6]
+      gamma1b=v[7]
+      beta2b=v[8]
+      gamma2b=v[9]
+      nub=v[10]
+      for(i in 1:5){
+        d <- c(doses,doses2)[i]
+        d2 <- c(doses,doses2)[5+i]
+        sum <- sum +
+          log(p11(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==1)*p01(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==1)*p10(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==0)*p00(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==0))+
+          log(p11(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==1)*p01(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==1)*p10(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==0)*p00(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==0))
+      }
+      return(-sum)
+    }
+    softmax <- function(v){
+      beta1=v[1]
+      gamma1=v[2]
+      beta2=v[3]
+      gamma2=v[4]
+      nu=v[5]
+      beta1b=v[6]
+      gamma1b=v[7]
+      beta2b=v[8]
+      gamma2b=v[9]
+      nub=v[10]
+      diff_e=function(x){abs(marg_prob(beta1,gamma1)(x)-marg_prob(beta1b,gamma1b)(x))}
+      h <- rep(NA, 1)
+      h[1]=beta1-beta1b
+      h[2]=beta2-beta2b
+      h[3]=(sum(diff_e(y)*exp(100*diff_e(y))))/(sum(exp(100*diff_e(y))))-epsilon
+      h
+      }
+    minimum <- auglag(par=c(par_gumbel1,par_gumbel2),joint_likelihood,heq=softmax,hin=hin,control.outer=list(method="nlminb",trace=FALSE))$par
+  }
+  
+  #bootstrap
+  #generate bootstrap data using the parameters obtained by the constrained optimization
+  data1b <- list()
+  data2b <- list()
+  
+  for (k in 1:B)
+  {
+    data1b <- gen_data(doses,minimum[1],minimum[2],minimum[3],minimum[4],minimum[5])
+    data2b <- gen_data(doses2,minimum[6],minimum[7],minimum[8],minimum[9],minimum[10])
+    
+    #MLE
+    #only 8 parameters due to the shared placebos
+    sum <- 0
+    likelihoodb <- function(v){
+      beta1=v[1]
+      gamma1=v[2]
+      beta2=v[3]
+      gamma2=v[4]
+      nu=v[5]
+      beta1b=v[6]
+      gamma1b=v[7]
+      beta2b=v[8]
+      gamma2b=v[9]
+      nub=v[10]
+      for(i in 1:length(doses)){
+        d <- doses[i]  
+        sum <- sum + log(p11(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==1 & data1b[[i]][,2]==1)*p01(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==0 & data1b[[i]][,2]==1)*p10(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==1 & data1b[[i]][,2]==0)*p00(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==0 & data1b[[i]][,2]==0))
+      + log(p11(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==1 & data2b[[i]][,2]==1)*p01(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==0 & data2b[[i]][,2]==1)*p10(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==1 & data2b[[i]][,2]==0)*p00(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==0 & data2b[[i]][,2]==0))
+      }
+      return(-sum) #for minimizing
+    }
+    par_gumbelb <- auglag(par=minimum,likelihoodb,heq=shared_placebos,hin=hin,control.outer=list(method="nlminb",trace=FALSE))$par
+    par_gumbel1b <- par_gumbelb[1:5]
+    par_gumbel2b <- par_gumbelb[6:10]
+    
+    
+    d_e_star <- max(abs(marg_prob(par_gumbel1b[1],par_gumbel1b[2])(y)-marg_prob(par_gumbel2b[1],par_gumbel2b[2])(y))) #max.abs.distance efficacy
+    d_t_star <- max(abs(marg_prob(par_gumbel1b[3],par_gumbel1b[4])(y)-marg_prob(par_gumbel2b[3],par_gumbel2b[4])(y))) #max. abs distance toxicity
+    t.star <- d_e_star
+    
+    boot[k] <- t.star
+
+    #save time if a seperate bootstrap for toxicity is not needed
+    #conditions imply that fot both tests the constrained estimates are the same as the unconstrained
+    if (t.stat2>=epsilon & t.stat>=epsilon){boot2[k] <- d_t_star}
+  }
+  
+  crit_val<-quantile(boot,0.05)
+  pval1 <- ecdf(boot)(t.stat)
+  
+  #second bootstrap (toxicity curves)
+  if (t.stat2<epsilon | t.stat<epsilon){
+    if (t.stat2>=epsilon){minimum <- c(par_gumbel1,par_gumbel2)} else {
+      sum <- 0
+      joint_likelihood=function(v){
+        beta1=v[1]
+        gamma1=v[2]
+        beta2=v[3]
+        gamma2=v[4]
+        nu=v[5]
+        beta1b=v[6]
+        gamma1b=v[7]
+        beta2b=v[8]
+        gamma2b=v[9]
+        nub=v[10]
+        for(i in 1:5){
+          d <- c(doses,doses2)[i]
+          d2 <- c(doses,doses2)[5+i]
+          sum <- sum +
+            log(p11(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==1)*p01(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==1)*p10(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==1 & data1[[i]][,2]==0)*p00(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1[[i]][,1]==0 & data1[[i]][,2]==0))+
+            log(p11(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==1)*p01(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==1)*p10(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==1 & data2[[i]][,2]==0)*p00(d2)(beta1b,gamma1b,beta2b,gamma2b,nub)^sum(data2[[i]][,1]==0 & data2[[i]][,2]==0))
+        }
+        return(-sum)
+      }
+      softmax <- function(v){
+        beta1=v[1]
+        gamma1=v[2]
+        beta2=v[3]
+        gamma2=v[4]
+        nu=v[5]
+        beta1b=v[6]
+        gamma1b=v[7]
+        beta2b=v[8]
+        gamma2b=v[9]
+        nub=v[10]
+        diff_e=function(x){abs(marg_prob(beta2,gamma2)(x)-marg_prob(beta2b,gamma2b)(x))}
+        h <- rep(NA, 1)
+        h[1]=beta1-beta1b
+        h[2]=beta2-beta2b
+        h[3]=(sum(diff_e(y)*exp(100*diff_e(y))))/(sum(exp(100*diff_e(y))))-epsilon
+        h
+      }
+      minimum <- auglag(par=c(par_gumbel1,par_gumbel2),joint_likelihood,heq=softmax,hin=hin,control.outer=list(method="nlminb",trace=FALSE))$par
+    }
+    
+    data1b <- list()
+    data2b <- list()
+    
+      for (k in 1:B)
+      {
+        data1b <- gen_data(doses,minimum[1],minimum[2],minimum[3],minimum[4],minimum[5])
+        data2b <- gen_data(doses2,minimum[6],minimum[7],minimum[8],minimum[9],minimum[10])
+        
+        #MLE
+        sum <- 0
+        likelihoodb <- function(v){
+          beta1=v[1]
+          gamma1=v[2]
+          beta2=v[3]
+          gamma2=v[4]
+          nu=v[5]
+          beta1b=v[6]
+          gamma1b=v[7]
+          beta2b=v[8]
+          gamma2b=v[9]
+          nub=v[10]
+          for(i in 1:length(doses)){
+            d <- doses[i]  
+            sum <- sum + log(p11(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==1 & data1b[[i]][,2]==1)*p01(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==0 & data1b[[i]][,2]==1)*p10(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==1 & data1b[[i]][,2]==0)*p00(d)(beta1,gamma1,beta2,gamma2,nu)^sum(data1b[[i]][,1]==0 & data1b[[i]][,2]==0))
+            + log(p11(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==1 & data2b[[i]][,2]==1)*p01(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==0 & data2b[[i]][,2]==1)*p10(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==1 & data2b[[i]][,2]==0)*p00(d)(beta1,gamma1b,beta2,gamma2b,nub)^sum(data2b[[i]][,1]==0 & data2b[[i]][,2]==0))
+          }
+          return(-sum) #for minimizing
+        }
+        par_gumbelb <- auglag(par=minimum,likelihoodb,heq=shared_placebos,hin=hin,control.outer=list(method="nlminb",trace=FALSE))$par
+        par_gumbel1b <- par_gumbelb[1:5]
+        par_gumbel2b <- par_gumbelb[6:10]
+        
+        
+        d_e_star <- max(abs(marg_prob(par_gumbel1b[1],par_gumbel1b[2])(y)-marg_prob(par_gumbel2b[1],par_gumbel2b[2])(y))) #max.abs.distance efficacy
+        d_t_star <- max(abs(marg_prob(par_gumbel1b[3],par_gumbel1b[4])(y)-marg_prob(par_gumbel2b[3],par_gumbel2b[4])(y))) #max. abs distance toxicity
+        t.star <- d_t_star
+    
+      boot2[k] <- t.star
+    }
+  }
+  crit_val2 <- quantile(boot2,0.05)
+  pval2 <- ecdf(boot2)(t.stat2)
+  
+  critval <- c(critval,crit_val,crit_val2)
+  pval <- c(pval,pval1,pval2)
 }
