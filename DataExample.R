@@ -26,9 +26,9 @@ marg_prob <- function(beta,gamma){return(function(d){1/(1+exp(-dose(beta,gamma)(
 
 #cell prob. curves
 p11 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
-p10 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){gumbel(nu)(dose(beta1,gamma1)(d),100)-gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
-p01 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){gumbel(nu)(100,dose(beta2,gamma2)(d))-gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
-p00 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){1-gumbel(nu)(dose(beta1,gamma1)(d),100)-gumbel(nu)(100,dose(beta2,gamma2)(d))+gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
+p10 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){marg_prob(beta1,gamma1)(d)-gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
+p01 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){marg_prob(beta2,gamma2)(d)-gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
+p00 <- function(d){function(beta1,gamma1,beta2,gamma2,nu){1-marg_prob(beta1,gamma1)(d)-marg_prob(beta2,gamma2)(d)+gumbel(nu)(dose(beta1,gamma1)(d),dose(beta2,gamma2)(d))}}
 
 #data-generating function
 n <- 30 #patients per dose level
@@ -87,7 +87,7 @@ boot2 <- vector()
 critval <- vector()
 pval <- vector()
 
-#functions yielding inequality constraints in order to guarantee that a joint distribution can exist
+#functions yielding inequality constraints for the estimation of the Gumbel model in order to guarantee that a joint distribution can exist
 hin1 <- function(x) {
   p1 <- 1/(1+exp(-dose(x[1],x[2])(doses)))
   p2 <- 1/(1+exp(-dose(x[3],x[4])(doses)))
