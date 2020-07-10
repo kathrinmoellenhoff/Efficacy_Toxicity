@@ -15,7 +15,7 @@ gumbel <- function(nu){
   return(cdf)
 }
 
-#"standard doses" 
+#standardized doses, see definition in the paper 
 dose <- function(beta,gamma){
   dose <- function(d){beta+gamma*d}
   return(dose)
@@ -80,7 +80,7 @@ cellp_list1 <- list()
 cellprob2 <- matrix(nrow=length(doses),ncol=4)
 cellp_list2 <- list()
 
-#numver of bootstrap repetitions and vectors for storing results
+#number of bootstrap repetitions and vectors for storing results
 B <- 1000
 boot <- vector()
 boot2 <- vector()
