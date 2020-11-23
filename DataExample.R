@@ -1,6 +1,6 @@
 ######################################################################
 #########Code for evaluating the data example from the paper##########
-######"Equivalence tests for binary efficacy-toxicity responses"######
+######"Testing for similiarity of binary efficacy-toxicity responses"######
 #############method implemented can also be used for #################
 ##########reproducing the simulation results##########################
 ####################Author: Kathrin Möllenhoff########################
