@@ -8,7 +8,7 @@
 library(MultiOrd) #package for generation of binary data
 library(alabama) #package for constrained optimization
 
-load("~/Dropbox/Kathrin/Uni/Efficacy_Toxicity/regional_reference_data.RData")
+load("~/regional_reference_data.RData")
 
 
 #(bivariate) gumbel cdf
